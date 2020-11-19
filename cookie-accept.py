@@ -66,10 +66,14 @@ def main():
 
     # Click Banner
     log("Clicking Banner")
-    banner_data = click_banner(driver)
-    if not "clicked_element" in banner_data and try_scroll:
-        log("Trying with scroll")
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+    result = click_banner(driver)
+    if result == False:
+        log("Warning, no matching candidate")
+    else:
+        log("Cookies accepted")
+    # if not "clicked_element" in banner_data and try_scroll:
+    #     log("Trying with scroll")
+    #     driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
     time.sleep(timeout)
     click_data = get_data(driver)
     make_screenshot("{}/all-click.png".format(screenshot_dir))
@@ -87,9 +91,9 @@ def main():
     make_screenshot("{}/all-second.png".format(screenshot_dir))
 
     # Save
-    data = {"first": before_data, "click": click_data, "second": after_data, "banner_data": banner_data,
-            "log": log_entries}
-    json.dump(data, open(outfile, "w"), indent=4)
+    # data = {"first": before_data, "click": click_data, "second": after_data, "banner_data": banner_data,
+    #         "log": log_entries}
+    # json.dump(data, open(outfile, "w"), indent=4)
 
     # Quit
     driver.quit()
@@ -122,82 +126,37 @@ def make_screenshot(path):
             log("Exception in making screenshot: {}".format(e))
 
 def click_banner(driver):
-
-    selectors_css = parse_rules(selectors, urlparse(driver.current_url).netloc)
-
     accept_words_list = open(accept_words, "r").read().splitlines()
+    for word in accept_words_list:
 
-    banner_data = {"matched_containers": [], "candidate_elements": []}
-    contents = driver.find_elements_by_css_selector(selectors_css)
-    screenshots = []
+        elements = driver.find_elements_by_xpath('//*[translate(normalize-space(.), " ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
+                                                 '" abcdefghijklmnopqrstuvwxyz") ="%s"]' % word)
 
-    for i, c in enumerate(contents):
-        banner_data["matched_containers"].append({  "id": c.id,
-                                                    "tag_name": c.tag_name,
-                                                    "text": c.text,
-                                                    "size": c.size,
-                                                    "selected": True if i==0 else False,
-                                                    })
-
-        if screenshot_dir is not None:
-            if not os.path.exists(screenshot_dir):
-                os.makedirs(screenshot_dir)
+        if not elements:
+            continue
+        else:
             try:
-                c.screenshot("{}/matched-containers-{}.png".format(screenshot_dir,i))
-            except Exception as e:
-                log("Exception in making screenshot: {}".format(e))
+                elements[0].click()
+                return True
+            except:
+                pass
+    frames = driver.find_elements_by_css_selector('iframe')
+    for frame in frames:
+        driver.switch_to.frame(frame)
+        for word in accept_words_list:
+            elements = driver.find_elements_by_xpath('//*[translate(normalize-space(.), " ABCDEFGHIJKLMNOPQRSTUVWXYZ", '
+                                                     '" abcdefghijklmnopqrstuvwxyz") ="%s"]' % word)
 
-    if len(contents) == 0:
-        log("Warning, no banner found")
-        return banner_data
-
-    if len(contents) > 1:
-        log("Warning, more than a cookie banner detected.")
-
-    candidate = None
-
-    # Try Links, add the element itself in case
-    links = []
-    for c in contents:
-        links += c.find_elements_by_tag_name("a")
-        if c.tag_name  == "a":
-            links.append(c)
-
-    for c in links:
-        if c.text.lower() in accept_words_list:
-            candidate = c
-            banner_data["candidate_elements"].append({  "id": c.id,
-                                                        "tag_name": c.tag_name,
-                                                        "text": c.text,
-                                                        "size": c.size,
-                                                        })
-
-    # Try buttons, add the element itself in case
-    btns = []
-    for c in contents:
-        btns += c.find_elements_by_tag_name("button")
-        if c.tag_name  == "button":
-            btns.append(c)
-
-    for c in btns:
-        if c.text.lower() in accept_words_list:
-            candidate  = c
-            banner_data["candidate_elements"].append({  "id": c.id,
-                                                        "tag_name": c.tag_name,
-                                                        "text": c.text,
-                                                        "size": c.size,
-                                                        })
-    # Click the candidate
-    if candidate is not None:
-        try: # in some pages element is not clickable
-            candidate.click()
-            banner_data["clicked_element"] = candidate.id
-        except:
-            pass
-    else:
-        log("Warning, no matching candidate")
-
-    return banner_data
+            if not elements:
+                continue
+            else:
+                try:
+                    elements[0].click()
+                    return True
+                except:
+                    pass
+        driver.switch_to.default_content()
+    return False
 
 
 def match_domains(domain, match):
