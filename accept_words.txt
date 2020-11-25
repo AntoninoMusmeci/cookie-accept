@@ -81,7 +81,6 @@ continue
 continue to site
 confirm
 fine by me
-fine by me!
 fine by me, i accept
 happy to accept cookies
 i accept cookies
@@ -93,7 +92,6 @@ yes, i’m happy
 yes, i agree
 yes, i accept
 got it
-got it!
 select all
 # Spanish
 aceptar
